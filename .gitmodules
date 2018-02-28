@@ -1,0 +1,3 @@
+[submodule "plugins/closed-plugins"]
+	path = plugins/closed-plugins
+	url = https://github.com/UniStuttgart-VISUS/megamol-closed-plugins.git
