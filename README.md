@@ -16,3 +16,9 @@ Assuming the `megamol-dev` repository is your `upstream` remote.
    git reset <file>
  ```
 
+Alternatively, you can simply clone the `megamol-closed-plugin` repository into your `plugins` directory.
+
+```
+   cd plugins
+   git clone https://github.com/UniStuttgart-VISUS/megamol-closed-plugins.git closed-plugins
+```
