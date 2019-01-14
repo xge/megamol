@@ -171,18 +171,18 @@ bool RaycastVolumeRenderer::Render(megamol::core::view::CallRender3D_2& cr) {
     glUniform3fv(m_raycast_volume_compute_shdr->ParameterLocation("boxMin"), 1, glm::value_ptr(box_min));
     glUniform3fv(m_raycast_volume_compute_shdr->ParameterLocation("boxMax"), 1, glm::value_ptr(box_max));
 
-    glUniform3f(m_raycast_volume_compute_shdr->ParameterLocation("halfVoxelSize"),
+    glUniform3f(m_raycast_volume_compute_shdr->ParameterLocation("halfVoxelSize"), // step size until next voxel in texture space
         1.0f / (2.0f * (m_volume_resolution[0] - 1)), 1.0f / (2.0f * (m_volume_resolution[1] - 1)),
         1.0f / (2.0f * (m_volume_resolution[2] - 1)));
     auto const maxResolution =
         std::max(m_volume_resolution[0], std::max(m_volume_resolution[1], m_volume_resolution[2]));
     auto const maxExtents = std::max(m_volume_extents[0], std::max(m_volume_extents[1], m_volume_extents[2]));
-    glUniform1f(m_raycast_volume_compute_shdr->ParameterLocation("voxelSize"), maxExtents / (maxResolution - 1.0f));
+    glUniform1f(m_raycast_volume_compute_shdr->ParameterLocation("voxelSize"), maxExtents / (maxResolution - 1.0f)); // edge length of voxel in world space 
     glUniform2fv(m_raycast_volume_compute_shdr->ParameterLocation("valRange"), 1, this->valRange.data());
     glUniform1f(m_raycast_volume_compute_shdr->ParameterLocation("rayStepRatio"),
         this->m_ray_step_ratio_param.Param<core::param::FloatParam>()->Value());
     glUniform1f(m_raycast_volume_compute_shdr->ParameterLocation("opacityThreshold"), 1.0);
-
+    
     // bind volume texture
     glActiveTexture(GL_TEXTURE0);
     m_volume_texture->bindTexture();
@@ -192,7 +192,7 @@ bool RaycastVolumeRenderer::Render(megamol::core::view::CallRender3D_2& cr) {
 
     // bind image texture
     m_render_target->bindImage(0, GL_WRITE_ONLY);
-
+    
     // dispatch compute
     m_raycast_volume_compute_shdr->Dispatch(
         static_cast<int>(std::ceil(rt_resolution[0] / 8.0f)), static_cast<int>(std::ceil(rt_resolution[1] / 8.0f)), 1);
@@ -207,7 +207,7 @@ bool RaycastVolumeRenderer::Render(megamol::core::view::CallRender3D_2& cr) {
     glBindTexture(GL_TEXTURE_3D, 0);
 
     m_raycast_volume_compute_shdr->Disable();
-
+    
     glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT);
 
     // store state
@@ -223,7 +223,7 @@ bool RaycastVolumeRenderer::Render(megamol::core::view::CallRender3D_2& cr) {
     if (state_depth_test) glDisable(GL_DEPTH_TEST);
     if (!state_blend) glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
+    
     m_render_to_framebuffer_shdr->Enable();
 
     // bind texture
