@@ -17,6 +17,8 @@ if(BUILD_${EXPORT_NAME}_PLUGIN)
   file(GLOB_RECURSE source_files RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "src/*.cpp")
   file(GLOB_RECURSE header_files RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "src/*.h")
   #file(GLOB_RECURSE shader_files RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "Shaders/*")
+    
+  add_subdirectory(MWK-mint/interop)
 
   # Target definition
   #add_library(${PROJECT_NAME} SHARED ${public_header_files} ${header_files} ${shader_files} ${source_files})
@@ -26,7 +28,9 @@ if(BUILD_${EXPORT_NAME}_PLUGIN)
   target_include_directories(${PROJECT_NAME} PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     "include" "src")
-  target_link_libraries(${PROJECT_NAME} PRIVATE core)
+  target_link_libraries(${PROJECT_NAME} PRIVATE core interop)
+
+  set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 11)
 
   # Installation rules for generated files
   install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/ DESTINATION "include")

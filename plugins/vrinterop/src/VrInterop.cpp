@@ -12,6 +12,8 @@
 #include "mmcore/versioninfo.h"
 #include "vislib/vislibversion.h"
 
+#include "VrInteropView3D.h"
+
 
 /* anonymous namespace hides this type from any other object files */
 namespace {
@@ -26,7 +28,7 @@ namespace {
                 "VrInterop", // TODO: Change this!
 
                 /* human-readable plugin description */
-                "Describing VrInterop (TODO: Change this!)") {
+                "Provides the VrInteropView3D, which does stereo rendering for VR. Camera configurations are received from external application (e.g. Unity) and used for rendering. Rendered stereo images are published using Spout senders.") {
 
             // here we could perform addition initialization
         };
@@ -44,6 +46,7 @@ namespace {
             // like:
             //   this->module_descriptions.RegisterAutoDescription<megamol::VrInterop::MyModule1>();
             //   this->module_descriptions.RegisterAutoDescription<megamol::VrInterop::MyModule2>();
+            this->module_descriptions.RegisterAutoDescription<megamol::vrinterop::VrInteropView3D>();
             //   ...
             //
 
