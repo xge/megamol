@@ -136,6 +136,11 @@ gl::Window::Window(const char* title, const utility::WindowPlacement & placement
             ::glfwSetCursorPosCallback(hWnd, &Window::glfw_onMouseMove_func);
             ::glfwSetScrollCallback(hWnd, &Window::glfw_onMouseWheel_func);
             ::glfwSetCharCallback(hWnd, &Window::glfw_onChar_func);
+
+            vislib::sys::Log::DefaultLog.WriteInfo("Console::Window: GL_VENDOR: %s\n", glGetString(GL_VENDOR));
+            vislib::sys::Log::DefaultLog.WriteInfo("Console::Window: GL_RENDERER: %s\n", glGetString(GL_RENDERER));
+            vislib::sys::Log::DefaultLog.WriteInfo("Console::Window: GL_VERSION: %s\n", glGetString(GL_VERSION));
+            vislib::sys::Log::DefaultLog.WriteInfo("Console::Window: GL_SHADING_LANGUAGE_VERSION: %s\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
         }
 
         glGenQueries(1, &fragmentQuery);
