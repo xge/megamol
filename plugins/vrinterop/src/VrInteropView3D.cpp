@@ -73,6 +73,7 @@ void VrInteropView3D::Render(const mmcRenderViewContext& context) {
 	doBboxDataShare(context);
 
 	bool hasModelPose = m_datasetPoseReceiver.getData<interop::ModelPose>(m_datasetPose);
+    hasModelPose = true; // for now, we use relative dataset positioning from unity - no model matrix is sent.
     bool hasCamView = m_stereoViewReceiver.getData<interop::StereoCameraView>(m_stereoCamView);
     static bool hasCamProj = m_camProjectionReceiver.getData<interop::CameraProjection>(m_cameraProjection);
 
