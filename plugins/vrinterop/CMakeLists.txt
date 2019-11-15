@@ -17,8 +17,14 @@ if(BUILD_${EXPORT_NAME}_PLUGIN)
   file(GLOB_RECURSE source_files RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "src/*.cpp")
   file(GLOB_RECURSE header_files RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "src/*.h")
   #file(GLOB_RECURSE shader_files RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "Shaders/*")
-    
-  add_subdirectory(MWK-mint/interop)
+
+  add_external_project(MWK-mint
+      GIT_REPOSITORY https://github.com/UniStuttgart-VISUS/MWK-mint.git
+      GIT_TAG "master"
+      BUILD_BYPRODUCTS "<INSTALL_DIR>/MWK-mint")
+
+  external_get_property(MWK-mint SOURCE_DIR)
+  add_subdirectory("${SOURCE_DIR}/interop" "${CMAKE_CURRENT_BINARY_DIR}/MWK-mint")
 
   # Target definition
   #add_library(${PROJECT_NAME} SHARED ${public_header_files} ${header_files} ${shader_files} ${source_files})
