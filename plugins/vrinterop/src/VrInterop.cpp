@@ -13,6 +13,7 @@
 #include "vislib/vislibversion.h"
 
 #include "VrInteropView3D.h"
+#include "VrInteropView3D_2.h"
 
 
 /* anonymous namespace hides this type from any other object files */
@@ -47,6 +48,7 @@ namespace {
             //   this->module_descriptions.RegisterAutoDescription<megamol::VrInterop::MyModule1>();
             //   this->module_descriptions.RegisterAutoDescription<megamol::VrInterop::MyModule2>();
             this->module_descriptions.RegisterAutoDescription<megamol::vrinterop::VrInteropView3D>();
+            this->module_descriptions.RegisterAutoDescription<megamol::vrinterop::VrInteropView3D_2>();
             //   ...
             //
 
