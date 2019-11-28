@@ -67,25 +67,6 @@ public:
      */
     virtual void Render(const mmcRenderViewContext& context);
 
-    void updateParameters();
-
-    /**
-     * Resizes the AbstractView3D.
-     *
-     * @param width The new width.
-     * @param height The new height.
-     */
-    virtual void Resize(unsigned int width, unsigned int height);
-
-    /**
-     * Callback requesting a rendering of this view
-     *
-     * @param call The calling call
-     *
-     * @return The return value
-     */
-    virtual bool OnRenderView(megamol::core::Call& call);
-
 protected:
     /**
      * Implementation of 'Create'.
@@ -146,9 +127,6 @@ private:
     /**********************************************************************
      * parameters
      **********************************************************************/
-
-    bool m_spoutSenderActive;
-    core::param::ParamSlot m_spoutSenderActiveParam;
 };
 
 } /* end namespace vrinterop */

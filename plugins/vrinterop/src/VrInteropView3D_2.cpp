@@ -21,14 +21,8 @@ using CameraParamsStore = vislib::graphics::CameraParamsStore;
 /*
  * vrinterop::VrInteropView3D::VrInteropView3D
  */
-VrInteropView3D_2::VrInteropView3D_2(void)
-    : View3D_2()
-	, m_spoutSenderActive(true)
-	, m_spoutSenderActiveParam("vrinterop::senderActive", "Toggle sending texture via Spout.")
-{
-	// init variables
-	this->m_spoutSenderActiveParam.SetParameter(new param::BoolParam(this->m_spoutSenderActive));
-	this->MakeSlotAvailable(&this->m_spoutSenderActiveParam);
+VrInteropView3D_2::VrInteropView3D_2(void) : View3D_2() {
+    // init variables
 }
 
 
@@ -60,13 +54,12 @@ namespace {
 			fbo.Create(width, height);
 		}
 	};
-}
+} // namespace
 
 /*
  * vrinterop::VrInteropView3D::Render
  */
 void VrInteropView3D_2::Render(const mmcRenderViewContext& context) {
-	updateParameters();
 
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT); // to get the Bbox, we issue a Render(). clean it up.
 
@@ -162,16 +155,6 @@ void  megamol::vrinterop::VrInteropView3D_2::broadcastFramebuffer(FramebufferObj
 	sender.sendTexture(fbo.GetColourTextureID(), fbo.GetWidth(), fbo.GetHeight());
 }
 
-void megamol::vrinterop::VrInteropView3D_2::updateParameters()
-{
-	// Update own parameters
-	if (this->m_spoutSenderActiveParam.IsDirty()) {
-		this->m_spoutSenderActiveParam.ResetDirty();
-
-		this->m_spoutSenderActive = !this->m_spoutSenderActive;
-		this->m_spoutSenderActiveParam.Param<param::BoolParam>()->SetValue(this->m_spoutSenderActive, false);
-	}
-}
 
 bool megamol::vrinterop::VrInteropView3D_2::isNewFbSize(unsigned int width, unsigned int height)
 {
@@ -187,21 +170,6 @@ bool megamol::vrinterop::VrInteropView3D_2::isNewFbSize(unsigned int width, unsi
 		std::cout << "change FBO size to: w=" << newWidth << ", h=" << newHeight << std::endl;
 
 	return isNew;
-}
-
-/*
- * vrinterop::VrInteropView3D_2::Resize
- */
-void VrInteropView3D_2::Resize(unsigned int width, unsigned int height) {
-	Base::Resize(width, height);
-}
-
-/*
- * vrinterop::VrInteropView3D_2::OnRenderView
- */
-bool VrInteropView3D_2::OnRenderView(Call& call) {
-	Base::OnRenderView(call);
-    return true;
 }
 
 /*
