@@ -11,6 +11,7 @@
 #include "mmcore/view/CallRender3D_2.h"
 #include "mmcore/param/BoolParam.h"
 
+#include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 
 using namespace megamol::vrinterop;
@@ -72,8 +73,8 @@ void VrInteropView3D_2::Render(const mmcRenderViewContext& context) {
 
 	if (hasCamView && hasCamProj && hasModelPose)
 	{
-		this->applyCameraConfig(m_stereoLCam, m_stereoCamView.leftEyeView, m_cameraProjection, m_datasetPose);
-		this->applyCameraConfig(m_stereoRCam, m_stereoCamView.rightEyeView, m_cameraProjection, m_datasetPose);
+		this->applyCameraConfig(m_stereoLCamParameters, m_stereoCamView.leftEyeView, m_cameraProjection, m_datasetPose);
+		this->applyCameraConfig(m_stereoRCamParameters, m_stereoCamView.rightEyeView, m_cameraProjection, m_datasetPose);
     }
 	else
 		return;
@@ -82,124 +83,113 @@ void VrInteropView3D_2::Render(const mmcRenderViewContext& context) {
 	const auto setFBO = [&](FramebufferObject& fbo)
 	{
         Base::overrideViewport = fboVp;
-        Base::overrideCall = nullptr; // or else View3D overrides our viewport
-        //Base::rendererSlot.CallAs<view::CallRender3D>()->SetCameraParameters(camParams); // does not help setting the viewport we want
-        Base::rendererSlot.CallAs<view::CallRender3D>()->SetOutputBuffer(&fbo);
-		fbo.Enable();
-	};
+        // viewport we want
+        Base::rendererSlot.CallAs<view::CallRender3D_2>()->SetOutputBuffer(&fbo);
+        Base::overrideCall = Base::rendererSlot.CallAs<view::CallRender3D_2>(); // or else View3D overrides our viewport
+        //fbo.Enable();
+    };
+
 
 	if (isNewFbSize(m_cameraProjection.pixelWidth, m_cameraProjection.pixelHeight))
 	{
 		Base::Resize(m_cameraProjection.pixelWidth, m_cameraProjection.pixelHeight);
         resizeFBO(m_stereoFBO_L, m_cameraProjection.pixelWidth, m_cameraProjection.pixelHeight);
         resizeFBO(m_stereoFBO_R, m_cameraProjection.pixelWidth, m_cameraProjection.pixelHeight);
-	}
+    }
 
-	setFBO(m_stereoFBO_L);
-	renderFromCamera(m_stereoLCam, context);
+    setFBO(m_stereoFBO_L);
+    renderFromCamera(m_stereoLCamParameters, context);
 
-	setFBO(m_stereoFBO_R);
-	renderFromCamera(m_stereoRCam, context);
+    setFBO(m_stereoFBO_R);
+    renderFromCamera(m_stereoRCamParameters, context);
 
-	broadcastFramebuffer(m_stereoFBO_L, m_stereoImageSender_L);
-	broadcastFramebuffer(m_stereoFBO_R, m_stereoImageSender_R);
+    Base::overrideCall = nullptr;
+    m_stereoFBO_R.Disable();
 
-	//m_stereoFBO_L.DrawColourTexture();
+    broadcastFramebuffer(m_stereoFBO_L, m_stereoImageSender_L);
+    broadcastFramebuffer(m_stereoFBO_R, m_stereoImageSender_R);
+
+    m_stereoFBO_L.DrawColourTexture();
 }
 
-void  megamol::vrinterop::VrInteropView3D_2::renderFromCamera(const CameraOpenGL & viewCamera, const mmcRenderViewContext& context)
-{
-	// we would like to disable the camera updating itself, if that feature wasn't protected...
-	// this->cam.markAsUpdated();
-	this->cam = viewCamera;
-	Base::Render(context);
+void megamol::vrinterop::VrInteropView3D_2::renderFromCamera(
+    const Camera::minimal_state_type& viewCamera, const mmcRenderViewContext& context) {
+    this->cam = viewCamera;
+    Base::rendererSlot.CallAs<view::CallRender3D_2>()->SetCameraState(this->cam);
+    Base::Render(context);
 }
 
-void megamol::vrinterop::VrInteropView3D_2::doBboxDataShare(const mmcRenderViewContext& context)
-{
+void megamol::vrinterop::VrInteropView3D_2::doBboxDataShare(const mmcRenderViewContext& context) {
     auto defBbox = m_dataBbox;
 
-	if (!oneTimeDataIsShared)
-	{
-		// get one time data: bbox
-		Base::Render(context); // base render sets bbox of dataset
-	}
+    if (!oneTimeDataIsShared) {
+        // get one time data: bbox
+        Base::Render(context); // base render sets bbox of dataset
+    }
 
-	//m_dataBbox = this->bboxs.ObjectSpaceBBox();
-	const auto bbox = this->bboxs.WorldSpaceBBox();
-	// bbox is such a fuckup
+    // m_dataBbox = this->bboxs.ObjectSpaceBBox();
+    auto bbox = this->bboxs.BoundingBox();
+    // bbox is such a fuckup
 
     defBbox.min = interop::vec4{
-        bbox.GetLeftBottomBack().GetX(),
-		bbox.GetLeftBottomBack().GetY(),
-		bbox.GetLeftBottomBack().GetZ(),
-		0.0f};
+        bbox.GetLeftBottomBack().GetX(), bbox.GetLeftBottomBack().GetY(), bbox.GetLeftBottomBack().GetZ(), 0.0f};
 
-	defBbox.max = interop::vec4{
-		bbox.GetRightTopFront().GetX(), 
-		bbox.GetRightTopFront().GetY(), 
-		bbox.GetRightTopFront().GetZ(), 
-		0.0f};
+    defBbox.max = interop::vec4{
+        bbox.GetRightTopFront().GetX(), bbox.GetRightTopFront().GetY(), bbox.GetRightTopFront().GetZ(), 0.0f};
 
-	oneTimeDataIsShared = true;
+    oneTimeDataIsShared = true;
     m_dataBbox = defBbox;
 
     m_bboxSender.sendData<interop::BoundingBoxCorners>("BoundingBoxCorners", m_dataBbox);
 }
 
-void  megamol::vrinterop::VrInteropView3D_2::broadcastFramebuffer(FramebufferObject& fbo, interop::TextureSender& sender)
-{
-	if (!this->m_spoutSenderActive)
-		return;
-
-	sender.sendTexture(fbo.GetColourTextureID(), fbo.GetWidth(), fbo.GetHeight());
+void megamol::vrinterop::VrInteropView3D_2::broadcastFramebuffer(
+    FramebufferObject& fbo, interop::TextureSender& sender) {
+    sender.sendTexture(fbo.GetColourTextureID(), fbo.GetWidth(), fbo.GetHeight());
 }
 
+bool megamol::vrinterop::VrInteropView3D_2::isNewFbSize(unsigned int width, unsigned int height) {
+    const auto newWidth = static_cast<GLint>(width);
+    const auto newHeight = static_cast<GLint>(height);
 
-bool megamol::vrinterop::VrInteropView3D_2::isNewFbSize(unsigned int width, unsigned int height)
-{
-	const auto newWidth = static_cast<GLint>(width);
-	const auto newHeight = static_cast<GLint>(height);
+    bool isNew = areDimsDifferent(newWidth, newHeight, m_fbWidth, m_fbHeight);
 
-	bool isNew = areDimsDifferent(newWidth, newHeight, m_fbWidth, m_fbHeight);
+    m_fbWidth = newWidth;
+    m_fbHeight = newHeight;
 
-	m_fbWidth = newWidth;
-	m_fbHeight = newHeight;
+    if (isNew) std::cout << "change FBO size to: w=" << newWidth << ", h=" << newHeight << std::endl;
 
-	if (isNew)
-		std::cout << "change FBO size to: w=" << newWidth << ", h=" << newHeight << std::endl;
-
-	return isNew;
+    return isNew;
 }
 
 /*
  * vrinterop::VrInteropView3D_2::create
  */
 bool VrInteropView3D_2::create(void) {
-	Base::create();
+    Base::create();
 
-	const std::string baseAdr = {"tcp://127.0.0.1"};
-	const std::string recvPort = {":12345"};
-	const std::string sendPort = {":12346"};
+    const std::string baseAdr = {"tcp://127.0.0.1"};
+    const std::string recvPort = {":12345"};
+    const std::string sendPort = {":12346"};
 
-	// inherit initial camera parameters
-	const CameraParamsStore camParams{ *this->cam.Parameters() };
-	this->m_stereoLCamParameters = new CameraParamsStore(camParams);
-	this->m_stereoRCamParameters = new CameraParamsStore(camParams);
-	this->m_stereoLCam = CameraOpenGL(m_stereoLCamParameters);
-	this->m_stereoRCam = CameraOpenGL(m_stereoRCamParameters);
+    // inherit initial camera parameters
+    Camera::minimal_state_type camParams;
+    this->cam.get_minimal_state(camParams);
 
-	// m_dataBbox - set in render()
+    this->m_stereoLCamParameters = camParams;
+    this->m_stereoRCamParameters = camParams;
+
+    // m_dataBbox - set in render()
     const auto radr = baseAdr + recvPort;
-	m_stereoViewReceiver.start(radr, "StereoCameraViewRelative");
-	m_camProjectionReceiver.start(radr, "CameraProjection");
-	m_datasetPoseReceiver.start(radr, "ModelPose");
+    m_stereoViewReceiver.start(radr, "StereoCameraViewRelative");
+    m_camProjectionReceiver.start(radr, "CameraProjection");
+    m_datasetPoseReceiver.start(radr, "ModelPose");
 
-	const auto sadr = baseAdr + sendPort;
-	m_bboxSender.start(sadr, "BoundingBoxCorners");
+    const auto sadr = baseAdr + sendPort;
+    m_bboxSender.start(sadr, "BoundingBoxCorners");
 
-	m_stereoFBO_L.Create(1, 1);
-	m_stereoFBO_R.Create(1, 1);
+    m_stereoFBO_L.Create(1, 1);
+    m_stereoFBO_R.Create(1, 1);
     m_stereoImageSender_L.init("/UnityInterop/DefaultNameLeft");
     m_stereoImageSender_R.init("/UnityInterop/DefaultNameRight");
 
@@ -211,59 +201,61 @@ bool VrInteropView3D_2::create(void) {
  * vrinterop::VrInteropView3D_2::release
  */
 void VrInteropView3D_2::release(void) {
-	Base::release();
+    Base::release();
 
-	m_stereoFBO_L.Release();
-	m_stereoFBO_R.Release();
+    m_stereoFBO_L.Release();
+    m_stereoFBO_R.Release();
     m_stereoImageSender_L.destroy();
     m_stereoImageSender_R.destroy();
 
-	m_stereoViewReceiver.stop();
+    m_stereoViewReceiver.stop();
     m_camProjectionReceiver.stop();
     m_datasetPoseReceiver.stop();
-	m_bboxSender.stop();
+    m_bboxSender.stop();
 }
 
-void VrInteropView3D_2::applyCameraConfig(CameraOpenGL& cam, const interop::CameraView& view, const interop::CameraProjection proj, interop::ModelPose& pose)
-{
-	vislib::math::Point<vislib::graphics::SceneSpaceType, 3> position(
-		view.eyePos.x,
-		view.eyePos.y,
-		view.eyePos.z);
+void VrInteropView3D_2::applyCameraConfig(
+    Camera::minimal_state_type& cam, const interop::CameraView& view, const interop::CameraProjection proj, interop::ModelPose& pose) {
+    Camera::minimal_state_type cam_parameters = cam;
 
-	vislib::math::Point<vislib::graphics::SceneSpaceType, 3> lookAt(
-		view.lookAtPos.x,
-		view.lookAtPos.y,
-		view.lookAtPos.z);
+	const auto toString = [](auto vec) -> std::string {
+		return std::string{"{" + std::to_string(vec.x) + ", " + std::to_string(vec.y) + ", " + std::to_string(vec.z) + "}"};
+	};
 
-	vislib::math::Vector<vislib::graphics::SceneSpaceType, 3> up(
-		view.camUpDir.x,
-		view.camUpDir.y,
-		view.camUpDir.z);
+	std::cout << "position: " << toString(view.eyePos) << std::endl;
 
-	cam.Parameters()->SetView(position, lookAt, up);
+    cam_parameters.half_disparity = 0.0f;
 
-	const float toDegree = 180.f / vislib::math::PI_DOUBLE;
-	cam.Parameters()->SetApertureAngle(proj.fieldOfViewY_rad * toDegree);
-	cam.Parameters()->SetNearClip(proj.nearClipPlane);
-	cam.Parameters()->SetFarClip(proj.farClipPlane);
-    cam.Parameters()->SetVirtualViewSize(
-		static_cast<vislib::graphics::ImageSpaceType>(proj.pixelWidth),
-		static_cast<vislib::graphics::ImageSpaceType>(proj.pixelHeight));
-    cam.Parameters()->SetTileRect(vislib::math::Rectangle<float>(0.0f, 0.0f, proj.pixelWidth, proj.pixelHeight));
+    cam_parameters.position = {view.eyePos.x, view.eyePos.y, view.eyePos.z};
 
-	// TODO: faking a model matrix is currently broken in MegaMol when rotating the dataset (e.g. in volume raycaster)
-	//float scale = pose.scale.x;
-    //cam.SetScale(scale);
+    //auto viewMat = glm::lookAt(
+    //	glm::vec3{view.eyePos.x, view.eyePos.y, view.eyePos.z},  // eye
+    //	glm::vec3{view.lookAtPos.x, view.lookAtPos.y, view.lookAtPos.z},  // center
+    //	glm::vec3{view.camUpDir.x, view.camUpDir.y, view.camUpDir.z}); // up
 
-    //float angle_rad = pose.rotation_axis_angle_rad.w;
-    //const auto& ax = pose.rotation_axis_angle_rad;
-	//vislib::math::Vector<vislib::graphics::SceneSpaceType, 3> axis(ax.x, ax.y, ax.z);
-    //vislib::math::Quaternion<vislib::graphics::SceneSpaceType> rotate(angle_rad, axis);
-    //cam.SetRotate(rotate);
+	const auto to_vec3 = [](auto vec) -> glm::vec3 {
+		return glm::vec3{vec.x, vec.y, vec.z};
+	};
+	glm::vec3 view_ = -(to_vec3(view.lookAtPos) - to_vec3(view.eyePos));
+    glm::vec3 right_ = glm::cross(to_vec3(view.camUpDir), view_);
+    glm::vec3 up_ = glm::cross(view_, right_);
+	glm::vec3 right_norm = glm::normalize(right_);
+    glm::vec3 up_norm = glm::normalize(up_);
+    glm::vec3 view_norm = glm::normalize(view_);
+	glm::mat3 viewMat = glm::mat3{right_norm, up_norm, view_norm};
 
-	//const auto& pos = pose.translation;
-	//vislib::math::Vector<vislib::graphics::SceneSpaceType, 3> translate(pos.x, pos.y, pos.z);
-	//cam.SetTranslate(translate);
+	auto view_quat = glm::normalize(glm::quat_cast(viewMat));
+    cam_parameters.orientation = {view_quat.x, view_quat.y, view_quat.z, view_quat.w};
+
+    cam_parameters.half_aperture_angle_radians = proj.fieldOfViewY_rad * 0.5f;
+    cam_parameters.near_clipping_plane = proj.nearClipPlane;
+    cam_parameters.far_clipping_plane = proj.farClipPlane;
+
+	const auto width = static_cast<int>(proj.pixelWidth);
+	const auto height = static_cast<int>(proj.pixelHeight);
+    cam_parameters.resolution_gate = {width, height};
+    cam_parameters.centre_offset = {0, 0};
+    cam_parameters.image_tile = {0, height, 0, width};
+
+    cam = cam_parameters;
 }
-

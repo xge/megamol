@@ -84,7 +84,7 @@ protected:
     /**********************************************************************
      * variables
      **********************************************************************/
-    using CameraOpenGL = vislib::graphics::gl::CameraOpenGL;
+    using Camera = core::view::Camera_2;
 
 public:
     using FramebufferObject = vislib::graphics::gl::FramebufferObject;
@@ -107,22 +107,19 @@ private:
     interop::TextureSender m_stereoImageSender_L;
     interop::TextureSender m_stereoImageSender_R;
 
-    void applyCameraConfig(CameraOpenGL& cam, const interop::CameraView& view, const interop::CameraProjection proj, interop::ModelPose& pose);
+    void applyCameraConfig(Camera::minimal_state_type& cam, const interop::CameraView& view, const interop::CameraProjection proj, interop::ModelPose& pose);
 
 	GLint m_fbWidth = 1, m_fbHeight = 1;
 	bool isNewFbSize(unsigned int width, unsigned int height);
     void broadcastFramebuffer(FramebufferObject& fbo, interop::TextureSender& textureSender);
-    void renderFromCamera(const CameraOpenGL& viewCamera, const mmcRenderViewContext& context);
+    void renderFromCamera(const Camera::minimal_state_type& viewCamera, const mmcRenderViewContext& context);
     void doBboxDataShare(const mmcRenderViewContext& context);
     bool oneTimeDataIsShared = false;
 
     // we overwrite the view camera / camera parameters with our settings
     // and call the View3D::Render() implementation to produce the image we need
-    CameraOpenGL m_stereoLCam;
-    vislib::SmartPtr<vislib::graphics::CameraParameters> m_stereoLCamParameters;
-
-    CameraOpenGL m_stereoRCam;
-    vislib::SmartPtr<vislib::graphics::CameraParameters> m_stereoRCamParameters;
+    Camera::minimal_state_type m_stereoLCamParameters;
+    Camera::minimal_state_type m_stereoRCamParameters;
 
     /**********************************************************************
      * parameters
