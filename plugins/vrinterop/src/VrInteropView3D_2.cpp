@@ -83,10 +83,8 @@ void VrInteropView3D_2::Render(const mmcRenderViewContext& context) {
 	const auto setFBO = [&](FramebufferObject& fbo)
 	{
         Base::overrideViewport = fboVp;
-        // viewport we want
         Base::rendererSlot.CallAs<view::CallRender3D_2>()->SetOutputBuffer(&fbo);
-        Base::overrideCall = Base::rendererSlot.CallAs<view::CallRender3D_2>(); // or else View3D overrides our viewport
-        //fbo.Enable();
+        Base::overrideCall = Base::rendererSlot.CallAs<view::CallRender3D_2>(); // this nudges View3D_2 to render into our FBO 
     };
 
 
@@ -103,6 +101,7 @@ void VrInteropView3D_2::Render(const mmcRenderViewContext& context) {
     setFBO(m_stereoFBO_R);
     renderFromCamera(m_stereoRCamParameters, context);
 
+    Base::overrideViewport = nullptr;
     Base::overrideCall = nullptr;
     m_stereoFBO_R.Disable();
 
@@ -114,6 +113,26 @@ void VrInteropView3D_2::Render(const mmcRenderViewContext& context) {
 
 void megamol::vrinterop::VrInteropView3D_2::renderFromCamera(
     const Camera::minimal_state_type& viewCamera, const mmcRenderViewContext& context) {
+
+    // View3D_2::Render() calls View3D_2::adaptCameraValues() before calling the CallRender and View3D_2::setCameraValues() after
+    // the former syncs dirty camera parameters to the used camera. then the call to the renderers happens.
+    // the latter writes the camera state into the camera parameters and sets the parameters dirty.
+    // this is done so in network environments the head node distributes dirty camera parameters to other nodes via lua.
+    
+    // for stereo rendering, we need to un-dirty the camera parameters, or else the parameters for the right camera are overwritten by the 
+    // camera-params-readback before the rendering.
+    this->cameraPositionParam.ResetDirty();
+    this->cameraOrientationParam.ResetDirty();
+    this->cameraProjectionTypeParam.ResetDirty();
+    this->cameraNearPlaneParam.ResetDirty();
+    this->cameraFarPlaneParam.ResetDirty();
+    this->cameraConvergencePlaneParam.ResetDirty();
+    this->cameraEyeParam.ResetDirty();
+    this->cameraGateScalingParam.ResetDirty();
+    this->cameraCenterOffsetParam.ResetDirty();
+    this->cameraHalfApertureRadiansParam.ResetDirty();
+    this->cameraHalfDisparityParam.ResetDirty();
+
     this->cam = viewCamera;
     Base::rendererSlot.CallAs<view::CallRender3D_2>()->SetCameraState(this->cam);
     Base::Render(context);
