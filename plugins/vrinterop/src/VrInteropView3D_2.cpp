@@ -237,12 +237,6 @@ void VrInteropView3D_2::applyCameraConfig(
     Camera::minimal_state_type& cam, const interop::CameraView& view, const interop::CameraProjection proj, interop::ModelPose& pose) {
     Camera::minimal_state_type cam_parameters = cam;
 
-	const auto toString = [](auto vec) -> std::string {
-		return std::string{"{" + std::to_string(vec.x) + ", " + std::to_string(vec.y) + ", " + std::to_string(vec.z) + "}"};
-	};
-
-	std::cout << "position: " << toString(view.eyePos) << std::endl;
-
     cam_parameters.half_disparity = 0.0f;
 
     cam_parameters.position = {view.eyePos.x, view.eyePos.y, view.eyePos.z};
