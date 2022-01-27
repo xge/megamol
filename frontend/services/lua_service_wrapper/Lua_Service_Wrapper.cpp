@@ -16,6 +16,7 @@
 #include "FrameStatistics.h"
 #include "GUIState.h"
 #include "GlobalValueStore.h"
+#include "MegaMolProject.h"
 #include "RuntimeConfig.h"
 #include "Screenshots.h"
 #include "WindowManipulation.h"
@@ -119,8 +120,9 @@ bool Lua_Service_Wrapper::init(const Config& config) {
         frontend_resources::CommandRegistry_Req_Name,
         "optional<GUIRegisterWindow>",
         "RuntimeConfig",
+        "MegaMolProject",
 #ifdef PROFILING
-#define PROFILING_RESOURCE_SLOT 11
+#define PROFILING_RESOURCE_SLOT 12
         frontend_resources::PerformanceManager_Req_Name,
 #endif
     }; //= {"ZMQ_Context"};
@@ -676,6 +678,64 @@ void Lua_Service_Wrapper::fill_graph_manipulation_callbacks(void* callbacks_coll
 
         return StringResult{answer.str().c_str()};
     }});
+
+    callbacks.add<VoidResult>("mmProject",
+        "()\n\tSets the current script file as active project, clearing all previous graph state",
+        {[&]() -> VoidResult {
+            // clear graph
+            auto& graph = const_cast<megamol::core::MegaMolGraph&>(
+                m_requestedResourceReferences[5].getResource<megamol::core::MegaMolGraph>());
+
+            graph.Clear();
+
+            // set current script file as project
+            auto& project = const_cast<frontend_resources::MegaMolProject&>(
+                m_requestedResourceReferences[11].getResource<frontend_resources::MegaMolProject>());
+
+            auto scriptpath = luaAPI.GetScriptPath();
+
+            if (scriptpath.empty())
+                return Error{"mmProject() error: no script path set. can not use it as project path."};
+
+            project.setProjectFile(scriptpath);
+
+            return VoidResult{};
+        }});
+
+    callbacks.add<StringResult>("mmGetProjectFile",
+        "()\n\tReturns the current project file, i.e. the script file. If no script file is set, an error is returned.",
+        {[&]() -> StringResult {
+            auto& project = m_requestedResourceReferences[11].getResource<frontend_resources::MegaMolProject>();
+
+            if (!project.attributes.has_value())
+                return Error{"mmGetProjectFile() error: no project file set."};
+
+            return StringResult{project.attributes.value().project_file.string()};
+        }});
+
+    callbacks.add<StringResult>("mmGetProjectDirectory",
+        "()\n\tReturns the current project directory. If no script file is set, an error is returned.",
+        {[&]() -> StringResult {
+            auto& project = m_requestedResourceReferences[11].getResource<frontend_resources::MegaMolProject>();
+
+            if (!project.attributes.has_value())
+                return Error{"mmGetProjectDirectory() error: no project directory set."};
+
+            // has trailing '/'
+            return StringResult{project.attributes.value().project_directory.string()};
+        }});
+
+    callbacks.add<StringResult>("mmGetProjectName",
+        "()\n\tReturns the name of the current project directory. If no script file is set, an error is returned.",
+        {[&]() -> StringResult {
+            auto& project = m_requestedResourceReferences[11].getResource<frontend_resources::MegaMolProject>();
+
+            if (!project.attributes.has_value())
+                return Error{"mmGetProjectName() error: no project name set."};
+
+            return StringResult{project.attributes.value().project_name};
+        }});
+
 #ifdef PROFILING
     callbacks.add<StringResult, std::string>("mmListModuleTimers",
         "(string name)\n\tList the registered timers of a module.", {[&](std::string name) -> StringResult {
