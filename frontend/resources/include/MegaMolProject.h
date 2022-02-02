@@ -18,9 +18,10 @@ struct MegaMolProject {
     using path = std::filesystem::path;
 
     struct ProjectAttributes {
-        std::string project_name = ""; // name of project directory
-        path project_file;
-        path project_directory;
+        // example: C:/megamol/project.lua
+        std::string project_name = ""; // name of project in some way, either "projcet.lua" or "project" or "something"
+        path project_file;             // project.lua
+        path project_directory;        // C:/megamol/
     };
 
     std::optional<ProjectAttributes> attributes = std::nullopt;
@@ -29,7 +30,7 @@ struct MegaMolProject {
         ProjectAttributes a;
         a.project_file = file;
         a.project_directory = path{file}.remove_filename(); // leaves trailing '/'
-        a.project_name = file.parent_path().filename().string();
+        a.project_name = file.filename().stem().string();
 
         attributes = a;
     }
