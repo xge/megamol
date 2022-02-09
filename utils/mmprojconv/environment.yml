@@ -1,0 +1,7 @@
+name: mmprj
+channels:
+    - conda-forge
+    - defaults
+dependencies:
+    - python=3.10
+    - black
