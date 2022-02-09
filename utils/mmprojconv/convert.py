@@ -4,6 +4,16 @@ import xml.etree.ElementTree as ET
 import logging
 
 
+def sanitize(classname: str) -> str:
+    mappings = {
+        "View2D": "View2DGL",        
+        "View3D": "View3DGL",
+        "SplitView": "SplitViewGL"
+    }
+    if classname in mappings:
+        return mappings[classname]
+    else:
+        return classname
 
 def convert(tree: ET.ElementTree) -> list[str]:
     view_nodes = tree.findall("view")
@@ -30,7 +40,20 @@ def convert_views(views: list[Element]) -> list[str]:
     result = []
     for view in views:
         viewmod = view.findall(f"module[@name='{view.get('viewmod')}']")[0]
-        result.append(f"mmCreateView(\"{view.get('name')}\", \"{viewmod.get('class')}\", \"::{viewmod.get('name')}\")")
+
+        if viewmod.get("class") == "GUIView":
+            calls = view.findall(f"call[@class='CallRenderView']")
+            calls = list(filter(lambda c: c.get("from").startswith("GUIView"), calls))
+            assert(len(calls) == 1)
+            viewmod = calls[0]
+
+            name = view.get("name")
+            classname = viewmod.get("to").split("::")[0][:-1]
+            modulename = viewmod.get("to")
+
+            result.append(f"mmCreateView(\"{name}\", \"{sanitize(classname)}\", \"::{modulename}\")")
+        else:
+            result.append(f"mmCreateView(\"{view.get('name')}\", \"{viewmod.get('class')}\", \"::{viewmod.get('name')}\")")
     return result
 
 
@@ -39,14 +62,20 @@ def convert_modules(module_nodes: list[Element]) -> list[list[str]]:
     modules = []
     params = []
     for module in module_nodes:
-        module_str = f"mmCreateModule(\"{module.get('class')}\", \"::{module.get('name')}\")"
+        if module.get("class") == "GUIView":
+            continue
+
+        classname = sanitize(module.get("class"))
+        module_str = f"mmCreateModule(\"{classname}\", \"::{module.get('name')}\")"
         modules.append(module_str)
         logging.debug(module_str)
+        
         for param in module.findall("param"):
             # mmSetParamValue("::RaycastVolumeExample::ScreenShooter1::view",[=[::RaycastVolumeExample::View3DGL1]=])
             param_str = f"mmSetParamValue(\"::{module.get('name')}::{param.get('name')}\",[=[{param.get('value')}]=])"
             params.append(param_str)
             logging.debug(param_str)
+    
     return [modules, params]
 
 
@@ -54,6 +83,9 @@ def convert_calls(calls: list[Element]) -> list[str]:
     # mmCreateCall("VolumetricDataCall","::RaycastVolumeExample::RaycastVolumeRenderer1::getData","::RaycastVolumeExample::VolumetricDataSource1::GetData")
     result = []
     for call in calls:
+        if "GUIView" in call.get("from") or "GUIView" in call.get("to"):
+            continue
+        
         result.append(f"mmCreateCall(\"{call.get('class')}\", \"::{call.get('from')}\", \"::{call.get('to')}\")")
     return result
 
