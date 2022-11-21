@@ -32,18 +32,20 @@ bool Profiling_Service::init(void* configPtr) {
                          << _frame_stats.last_rendered_frame_time_milliseconds << std::endl;
             }
             for (auto& e : fi.entries) {
-                auto conf = _perf_man.lookup_config(e.handle);
-                auto name = conf.name;
-                auto parent = _perf_man.lookup_parent(e.handle);
-                auto comment = conf.comment;
-                std::string time_string;
-                const auto dur = std::chrono::duration<double, std::milli>(e.timestamp.time_since_epoch());
-                time_string = std::to_string(dur.count());
+                if (e.type == megamol::frontend_resources::PerformanceManager::entry_type::DURATION) {
+                    auto conf = _perf_man.lookup_config(e.handle);
+                    auto name = conf.name;
+                    auto parent = _perf_man.lookup_parent(e.handle);
+                    auto comment = conf.comment;
+                    std::string time_string;
+                    const auto dur = std::chrono::duration<double, std::milli>(e.timestamp.time_since_epoch());
+                    time_string = std::to_string(dur.count());
 
-                log_file << frame << ";" << parent << ";" << name << ";" << comment << ";" << e.frame_index << ";"
-                         << megamol::frontend_resources::PerformanceManager::query_api_string(e.api) << ";"
-                         << megamol::frontend_resources::PerformanceManager::entry_type_string(e.type) << ";"
-                         << time_string << std::endl;
+                    log_file << frame << ";" << parent << ";" << name << ";" << comment << ";" << e.frame_index << ";"
+                             << megamol::frontend_resources::PerformanceManager::query_api_string(e.api) << ";"
+                             << megamol::frontend_resources::PerformanceManager::entry_type_string(e.type) << ";"
+                             << time_string << std::endl;
+                }
             }
         });
     }
